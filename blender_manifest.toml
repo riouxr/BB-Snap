@@ -1,0 +1,66 @@
+schema_version = "1.0.0"
+
+# Package ID in the format: author_name_package_name (must be valid Python identifier)
+id = "blender_bob_bb_snap"
+
+# Addon version
+version = "1.0.0"
+
+# Display name shown in Blender's preferences
+name = "BB Snap"
+
+# Short description
+tagline = "Snap objects to incremental distances using sliders"
+
+# Detailed description
+description = """
+BB Snap is a simple yet powerful addon that allows you to move selected objects 
+in precise increments using sliders. Set a snap distance and use the X, Y, Z 
+sliders to move objects in either global or local coordinate space.
+
+Features:
+- Customizable snap distance
+- Global and Local coordinate space options
+- X, Y, Z axis sliders for precise movement
+- Works with multiple selected objects
+- Reset button to zero all sliders
+"""
+
+# Minimum Blender version required
+blender_version_min = "4.2.0"
+
+# License identifier (SPDX format)
+# Common options: "GPL-3.0-or-later", "MIT", "Apache-2.0", "BSD-3-Clause"
+license = [
+    "SPDX:GPL-3.0-or-later",
+]
+
+# Copyright notice
+copyright = [
+    "2024-2026 Blender Bob",
+    "2024-2026 Claude.ai",
+]
+
+# Maintainer (shown in addon preferences)
+maintainer = "Blender Bob <blenderbob@example.com>"
+
+# Type of extension
+type = "add-on"
+
+# Tags for categorization and search
+tags = [
+    "Object",
+    "Transform",
+    "Snap",
+    "Precision",
+    "Modeling",
+]
+
+# Website URL (optional)
+# website = "https://example.com/bb_snap"
+
+# Permissions required by the addon (currently not enforced but good for documentation)
+# permissions = []
+
+# Wheels (Python dependencies) - none needed for this addon
+# wheels = []
