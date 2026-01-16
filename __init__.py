@@ -19,7 +19,6 @@ _reset_timer_handle = None
 _last_slider_time = 0
 
 
-# Helper function to move objects
 def move_selected_objects(context, axis, movement, coord_space):
     """Move selected objects by the specified amount"""
     selected_objects = context.selected_objects
@@ -29,7 +28,6 @@ def move_selected_objects(context, axis, movement, coord_space):
     
     for obj in selected_objects:
         if coord_space == 'GLOBAL':
-            # Move in global space
             if axis == 'X':
                 obj.location.x += movement
             elif axis == 'Y':
@@ -37,7 +35,6 @@ def move_selected_objects(context, axis, movement, coord_space):
             elif axis == 'Z':
                 obj.location.z += movement
         else:  # LOCAL
-            # Move in local space
             if axis == 'X':
                 local_vector = mathutils.Vector((movement, 0, 0))
             elif axis == 'Y':
@@ -45,7 +42,6 @@ def move_selected_objects(context, axis, movement, coord_space):
             elif axis == 'Z':
                 local_vector = mathutils.Vector((0, 0, movement))
             
-            # Rotate the vector by the object's rotation
             global_vector = obj.matrix_world.to_3x3() @ local_vector
             obj.location += global_vector
 
@@ -57,7 +53,6 @@ def schedule_reset():
     
     _last_slider_time = time.time()
     
-    # Register timer if not already registered
     if _reset_timer_handle is None or not bpy.app.timers.is_registered(check_for_reset):
         _reset_timer_handle = bpy.app.timers.register(check_for_reset, first_interval=0.5)
 
@@ -70,27 +65,18 @@ def check_for_reset():
     current_time = time.time()
     time_since_last_change = current_time - _last_slider_time
     
-    # If 0.5 seconds have passed since last slider change, reset
     if time_since_last_change >= 0.5:
         try:
             if bpy.context.scene and hasattr(bpy.context.scene, 'bbsnap_props'):
                 props = bpy.context.scene.bbsnap_props
                 
-                # Reset all sliders
                 props["x_slider"] = 0.0
                 props["y_slider"] = 0.0
                 props["z_slider"] = 0.0
                 props.prev_x = 0.0
                 props.prev_y = 0.0
                 props.prev_z = 0.0
-                props["scale_x_slider"] = 0.0
-                props["scale_y_slider"] = 0.0
-                props["scale_z_slider"] = 0.0
-                props.prev_scale_x = 0.0
-                props.prev_scale_y = 0.0
-                props.prev_scale_z = 0.0
                 
-                # Force UI redraw
                 for window in bpy.context.window_manager.windows:
                     for area in window.screen.areas:
                         if area.type == 'VIEW_3D':
@@ -101,40 +87,31 @@ def check_for_reset():
             pass
         
         _reset_timer_handle = None
-        return None  # Don't repeat
+        return None
     
-    # Check again in 0.05 seconds
     return 0.05
 
 
-# Update functions for sliders
 def update_x_slider(self, context):
     """Update function for X slider"""
     props = context.scene.bbsnap_props
-    
-    # Snap the slider value to the snap_distance increment
-    snapped_value = round(props.x_slider / props.snap_distance) * props.snap_distance
-    
-    # Calculate delta from previous snapped value
+    snap_dist = props.move_snap_x
+    snapped_value = round(props.x_slider / snap_dist) * snap_dist
     delta = snapped_value - props.prev_x
     
-    if abs(delta) > 0.0001:  # Only move if there's actual change
+    if abs(delta) > 0.0001:
         move_selected_objects(context, 'X', delta, props.coordinate_space)
         props.prev_x = snapped_value
         schedule_reset()
     
-    # Force the slider to the snapped value (without triggering update again)
     props["x_slider"] = snapped_value
 
 
 def update_y_slider(self, context):
     """Update function for Y slider"""
     props = context.scene.bbsnap_props
-    
-    # Snap the slider value to the snap_distance increment
-    snapped_value = round(props.y_slider / props.snap_distance) * props.snap_distance
-    
-    # Calculate delta from previous snapped value
+    snap_dist = props.move_snap_x if props.proportional_move else props.move_snap_y
+    snapped_value = round(props.y_slider / snap_dist) * snap_dist
     delta = snapped_value - props.prev_y
     
     if abs(delta) > 0.0001:
@@ -142,18 +119,14 @@ def update_y_slider(self, context):
         props.prev_y = snapped_value
         schedule_reset()
     
-    # Force the slider to the snapped value (without triggering update again)
     props["y_slider"] = snapped_value
 
 
 def update_z_slider(self, context):
     """Update function for Z slider"""
     props = context.scene.bbsnap_props
-    
-    # Snap the slider value to the snap_distance increment
-    snapped_value = round(props.z_slider / props.snap_distance) * props.snap_distance
-    
-    # Calculate delta from previous snapped value
+    snap_dist = props.move_snap_x if props.proportional_move else props.move_snap_z
+    snapped_value = round(props.z_slider / snap_dist) * snap_dist
     delta = snapped_value - props.prev_z
     
     if abs(delta) > 0.0001:
@@ -161,143 +134,55 @@ def update_z_slider(self, context):
         props.prev_z = snapped_value
         schedule_reset()
     
-    # Force the slider to the snapped value (without triggering update again)
     props["z_slider"] = snapped_value
 
 
-def update_snap_distance(self, context):
-    """Update function for snap distance"""
-    # This can be used to adjust slider behavior if needed
-    pass
+def update_proportional_move(self, context):
+    """Update Y and Z snap values when proportional move is toggled"""
+    if self.proportional_move:
+        self.move_snap_y = self.move_snap_x
+        self.move_snap_z = self.move_snap_x
 
 
-# Scale update functions
-def update_scale_x_slider(self, context):
-    """Update function for X scale slider"""
-    props = context.scene.bbsnap_props
-    
-    # Snap the slider value to the snap_distance increment
-    snapped_value = round(props.scale_x_slider / props.snap_distance) * props.snap_distance
-    
-    # Calculate delta from previous snapped value
-    delta = snapped_value - props.prev_scale_x
-    
-    if abs(delta) > 0.0001:  # Only scale if there's actual change
-        if props.proportional_scale:
-            # Scale all axes proportionally
-            scale_selected_objects(context, 'XYZ', delta, props.coordinate_space)
-            props.prev_scale_y = snapped_value
-            props.prev_scale_z = snapped_value
-            props["scale_y_slider"] = snapped_value
-            props["scale_z_slider"] = snapped_value
-        else:
-            scale_selected_objects(context, 'X', delta, props.coordinate_space)
-        props.prev_scale_x = snapped_value
-        schedule_reset()
-    
-    # Force the slider to the snapped value (without triggering update again)
-    props["scale_x_slider"] = snapped_value
-
-
-def update_scale_y_slider(self, context):
-    """Update function for Y scale slider"""
-    props = context.scene.bbsnap_props
-    
-    # Snap the slider value to the snap_distance increment
-    snapped_value = round(props.scale_y_slider / props.snap_distance) * props.snap_distance
-    
-    # Calculate delta from previous snapped value
-    delta = snapped_value - props.prev_scale_y
-    
-    if abs(delta) > 0.0001:
-        if props.proportional_scale:
-            # Scale all axes proportionally
-            scale_selected_objects(context, 'XYZ', delta, props.coordinate_space)
-            props.prev_scale_x = snapped_value
-            props.prev_scale_z = snapped_value
-            props["scale_x_slider"] = snapped_value
-            props["scale_z_slider"] = snapped_value
-        else:
-            scale_selected_objects(context, 'Y', delta, props.coordinate_space)
-        props.prev_scale_y = snapped_value
-        schedule_reset()
-    
-    # Force the slider to the snapped value (without triggering update again)
-    props["scale_y_slider"] = snapped_value
-
-
-def update_scale_z_slider(self, context):
-    """Update function for Z scale slider"""
-    props = context.scene.bbsnap_props
-    
-    # Snap the slider value to the snap_distance increment
-    snapped_value = round(props.scale_z_slider / props.snap_distance) * props.snap_distance
-    
-    # Calculate delta from previous snapped value
-    delta = snapped_value - props.prev_scale_z
-    
-    if abs(delta) > 0.0001:
-        if props.proportional_scale:
-            # Scale all axes proportionally
-            scale_selected_objects(context, 'XYZ', delta, props.coordinate_space)
-            props.prev_scale_x = snapped_value
-            props.prev_scale_y = snapped_value
-            props["scale_x_slider"] = snapped_value
-            props["scale_y_slider"] = snapped_value
-        else:
-            scale_selected_objects(context, 'Z', delta, props.coordinate_space)
-        props.prev_scale_z = snapped_value
-        schedule_reset()
-    
-    # Force the slider to the snapped value (without triggering update again)
-    props["scale_z_slider"] = snapped_value
-
-
-def scale_selected_objects(context, axis, scale_delta, coord_space):
-    """Scale selected objects by the specified amount"""
-    selected_objects = context.selected_objects
-    
-    if not selected_objects:
-        return
-    
-    for obj in selected_objects:
-        if axis == 'XYZ':
-            # Proportional scaling on all axes
-            obj.scale.x += scale_delta
-            obj.scale.y += scale_delta
-            obj.scale.z += scale_delta
-        elif coord_space == 'GLOBAL':
-            # Scale in global space
-            if axis == 'X':
-                obj.scale.x += scale_delta
-            elif axis == 'Y':
-                obj.scale.y += scale_delta
-            elif axis == 'Z':
-                obj.scale.z += scale_delta
-        else:  # LOCAL
-            # For local scale, we still use the object's own scale
-            # (scale is always in local space by nature)
-            if axis == 'X':
-                obj.scale.x += scale_delta
-            elif axis == 'Y':
-                obj.scale.y += scale_delta
-            elif axis == 'Z':
-                obj.scale.z += scale_delta
+def update_move_snap_x(self, context):
+    """Update Y and Z when X changes if proportional is on"""
+    if self.proportional_move:
+        self.move_snap_y = self.move_snap_x
+        self.move_snap_z = self.move_snap_x
 
 
 class BBSnapProperties(PropertyGroup):
     """Properties for BB Snap addon"""
     
-    snap_distance: FloatProperty(
-        name="Snap Distance",
-        description="Distance to move objects per slider increment",
+    move_snap_x: FloatProperty(
+        name="X Snap",
+        description="Snap increment for X axis movement",
         default=1.0,
         min=0.001,
         soft_min=0.1,
         soft_max=10.0,
         precision=3,
-        step=1,
-        update=update_snap_distance,
+        update=update_move_snap_x,
+    )
+    
+    move_snap_y: FloatProperty(
+        name="Y Snap",
+        description="Snap increment for Y axis movement",
+        default=1.0,
+        min=0.001,
+        soft_min=0.1,
+        soft_max=10.0,
+        precision=3,
+    )
+    
+    move_snap_z: FloatProperty(
+        name="Z Snap",
+        description="Snap increment for Z axis movement",
+        default=1.0,
+        min=0.001,
+        soft_min=0.1,
+        soft_max=10.0,
+        precision=3,
     )
     
     coordinate_space: EnumProperty(
@@ -310,20 +195,16 @@ class BBSnapProperties(PropertyGroup):
         default='GLOBAL',
     )
     
-    proportional_scale: BoolProperty(
-        name="Proportional Scale",
-        description="Scale all axes proportionally together",
-        default=True,
+    proportional_move: BoolProperty(
+        name="Proportional Move",
+        description="Move all axes proportionally together",
+        default=False,
+        update=update_proportional_move,
     )
     
-    # Store previous values for calculating delta
     prev_x: FloatProperty(default=0.0)
     prev_y: FloatProperty(default=0.0)
     prev_z: FloatProperty(default=0.0)
-    
-    prev_scale_x: FloatProperty(default=0.0)
-    prev_scale_y: FloatProperty(default=0.0)
-    prev_scale_z: FloatProperty(default=0.0)
     
     x_slider: FloatProperty(
         name="X",
@@ -354,42 +235,64 @@ class BBSnapProperties(PropertyGroup):
         precision=3,
         update=update_z_slider,
     )
-    
-    scale_x_slider: FloatProperty(
-        name="X",
-        description="Scale along X axis (snaps to increment)",
-        default=0.0,
-        soft_min=-10.0,
-        soft_max=10.0,
-        precision=3,
-        update=update_scale_x_slider,
-    )
-    
-    scale_y_slider: FloatProperty(
-        name="Y",
-        description="Scale along Y axis (snaps to increment)",
-        default=0.0,
-        soft_min=-10.0,
-        soft_max=10.0,
-        precision=3,
-        update=update_scale_y_slider,
-    )
-    
-    scale_z_slider: FloatProperty(
-        name="Z",
-        description="Scale along Z axis (snaps to increment)",
-        default=0.0,
-        soft_min=-10.0,
-        soft_max=10.0,
-        precision=3,
-        update=update_scale_z_slider,
-    )
 
 
-class BBSNAP_OT_move_objects(Operator):
-    """Move selected objects by snap distance"""
-    bl_idname = "bbsnap.move_objects"
-    bl_label = "Move Objects"
+class BBSNAP_OT_from_selected(Operator):
+    """Set move snap increments from selected object's bounding box dimensions"""
+    bl_idname = "bbsnap.from_selected"
+    bl_label = "From Selected"
+    bl_options = {'REGISTER', 'UNDO'}
+    
+    def execute(self, context):
+        props = context.scene.bbsnap_props
+        props.proportional_move = False
+        
+        obj = context.active_object
+        
+        if not obj:
+            self.report({'WARNING'}, "No active object")
+            return {'CANCELLED'}
+        
+        bbox = obj.bound_box
+        
+        min_x = min([v[0] for v in bbox])
+        max_x = max([v[0] for v in bbox])
+        min_y = min([v[1] for v in bbox])
+        max_y = max([v[1] for v in bbox])
+        min_z = min([v[2] for v in bbox])
+        max_z = max([v[2] for v in bbox])
+        
+        dim_x = (max_x - min_x) * obj.scale.x
+        dim_y = (max_y - min_y) * obj.scale.y
+        dim_z = (max_z - min_z) * obj.scale.z
+        
+        props.move_snap_x = abs(dim_x) if abs(dim_x) > 0.001 else 1.0
+        props.move_snap_y = abs(dim_y) if abs(dim_y) > 0.001 else 1.0
+        props.move_snap_z = abs(dim_z) if abs(dim_z) > 0.001 else 1.0
+        
+        self.report({'INFO'}, f"Set increments: X={dim_x:.3f}, Y={dim_y:.3f}, Z={dim_z:.3f}")
+        
+        return {'FINISHED'}
+
+
+class BBSNAP_OT_set_proportional_move(Operator):
+    """Toggle proportional move mode"""
+    bl_idname = "bbsnap.set_proportional_move"
+    bl_label = "Set Proportional Move"
+    bl_options = {'REGISTER', 'UNDO'}
+    
+    mode: BoolProperty()
+    
+    def execute(self, context):
+        props = context.scene.bbsnap_props
+        props.proportional_move = self.mode
+        return {'FINISHED'}
+
+
+class BBSNAP_OT_instance_copy(Operator):
+    """Create instance copy and move it by the snap increment"""
+    bl_idname = "bbsnap.instance_copy"
+    bl_label = "Instance Copy"
     bl_options = {'REGISTER', 'UNDO'}
     
     axis: EnumProperty(
@@ -400,46 +303,90 @@ class BBSNAP_OT_move_objects(Operator):
         ]
     )
     
-    value: FloatProperty()
-    previous_value: FloatProperty()
-    
     def execute(self, context):
         props = context.scene.bbsnap_props
-        
-        # Calculate the delta movement
-        delta = self.value - self.previous_value
-        movement = delta * props.snap_distance
-        
-        # Get selected objects
         selected_objects = context.selected_objects
         
         if not selected_objects:
             self.report({'WARNING'}, "No objects selected")
             return {'CANCELLED'}
         
-        # Move objects
+        if self.axis == 'X':
+            snap_dist = props.move_snap_x
+        elif self.axis == 'Y':
+            snap_dist = props.move_snap_y
+        elif self.axis == 'Z':
+            snap_dist = props.move_snap_z
+        
+        new_instances = []
+        
         for obj in selected_objects:
+            new_obj = obj.copy()
+            new_obj.data = obj.data
+            context.collection.objects.link(new_obj)
+            
             if props.coordinate_space == 'GLOBAL':
-                # Move in global space
                 if self.axis == 'X':
-                    obj.location.x += movement
+                    new_obj.location.x += snap_dist
                 elif self.axis == 'Y':
-                    obj.location.y += movement
+                    new_obj.location.y += snap_dist
                 elif self.axis == 'Z':
-                    obj.location.z += movement
+                    new_obj.location.z += snap_dist
             else:  # LOCAL
-                # Move in local space
-                import mathutils
                 if self.axis == 'X':
-                    local_vector = mathutils.Vector((movement, 0, 0))
+                    local_vector = mathutils.Vector((snap_dist, 0, 0))
                 elif self.axis == 'Y':
-                    local_vector = mathutils.Vector((0, movement, 0))
+                    local_vector = mathutils.Vector((0, snap_dist, 0))
                 elif self.axis == 'Z':
-                    local_vector = mathutils.Vector((0, 0, movement))
+                    local_vector = mathutils.Vector((0, 0, snap_dist))
                 
-                # Rotate the vector by the object's rotation
                 global_vector = obj.matrix_world.to_3x3() @ local_vector
-                obj.location += global_vector
+                new_obj.location = obj.location + global_vector
+            
+            new_instances.append(new_obj)
+        
+        for obj in selected_objects:
+            obj.select_set(False)
+        
+        for obj in new_instances:
+            obj.select_set(True)
+        
+        if new_instances:
+            context.view_layer.objects.active = new_instances[-1]
+        
+        self.report({'INFO'}, f"Created {len(new_instances)} instance(s)")
+        
+        return {'FINISHED'}
+
+
+class BBSNAP_OT_move_button(Operator):
+    """Move selected objects by snap increment"""
+    bl_idname = "bbsnap.move_button"
+    bl_label = "Move"
+    bl_options = {'REGISTER', 'UNDO'}
+    
+    axis: EnumProperty(
+        items=[
+            ('X', "X", "X axis"),
+            ('Y', "Y", "Y axis"),
+            ('Z', "Z", "Z axis"),
+        ]
+    )
+    
+    direction: bpy.props.IntProperty(default=1)
+    
+    def execute(self, context):
+        props = context.scene.bbsnap_props
+        
+        if self.axis == 'X':
+            snap_dist = props.move_snap_x
+        elif self.axis == 'Y':
+            snap_dist = props.move_snap_y
+        elif self.axis == 'Z':
+            snap_dist = props.move_snap_z
+        
+        movement = snap_dist * self.direction
+        move_selected_objects(context, self.axis, movement, props.coordinate_space)
         
         return {'FINISHED'}
 
@@ -456,66 +403,83 @@ class BBSNAP_PT_panel(Panel):
         layout = self.layout
         props = context.scene.bbsnap_props
         
-        # Snap Distance field
         box = layout.box()
         box.label(text="Settings:", icon='SETTINGS')
-        box.prop(props, "snap_distance")
         
-        # Coordinate Space checkboxes (as radio buttons)
         box.label(text="Coordinate Space:")
         row = box.row(align=True)
         row.prop_enum(props, "coordinate_space", 'GLOBAL')
         row.prop_enum(props, "coordinate_space", 'LOCAL')
         
-        # Move Sliders
         layout.separator()
         box = layout.box()
         box.label(text="Move:", icon='ORIENTATION_GLOBAL' if props.coordinate_space == 'GLOBAL' else 'ORIENTATION_LOCAL')
         
+        row = box.row(align=True)
+        row.label(text="Snap Mode:")
+        op = row.operator("bbsnap.set_proportional_move", text="Uniform", depress=props.proportional_move)
+        op.mode = True
+        op = row.operator("bbsnap.set_proportional_move", text="Per Axis", depress=not props.proportional_move)
+        op.mode = False
+        
+        box.operator("bbsnap.from_selected", icon='SNAP_VOLUME')
+        
         # X Slider
-        row = box.row()
+        row = box.row(align=True)
         row.label(text="X:")
+        row.prop(props, "move_snap_x", text="")
+        row.separator()
+        op = row.operator("bbsnap.move_button", text="", icon='TRIA_LEFT')
+        op.axis = 'X'
+        op.direction = -1
         row.prop(props, "x_slider", text="", slider=True)
+        op = row.operator("bbsnap.move_button", text="", icon='TRIA_RIGHT')
+        op.axis = 'X'
+        op.direction = 1
+        op = row.operator("bbsnap.instance_copy", text="I")
+        op.axis = 'X'
         
         # Y Slider
-        row = box.row()
+        row = box.row(align=True)
         row.label(text="Y:")
+        sub = row.row(align=True)
+        sub.enabled = not props.proportional_move
+        sub.prop(props, "move_snap_y", text="")
+        row.separator()
+        op = row.operator("bbsnap.move_button", text="", icon='TRIA_LEFT')
+        op.axis = 'Y'
+        op.direction = -1
         row.prop(props, "y_slider", text="", slider=True)
+        op = row.operator("bbsnap.move_button", text="", icon='TRIA_RIGHT')
+        op.axis = 'Y'
+        op.direction = 1
+        op = row.operator("bbsnap.instance_copy", text="I")
+        op.axis = 'Y'
         
         # Z Slider
-        row = box.row()
+        row = box.row(align=True)
         row.label(text="Z:")
+        sub = row.row(align=True)
+        sub.enabled = not props.proportional_move
+        sub.prop(props, "move_snap_z", text="")
+        row.separator()
+        op = row.operator("bbsnap.move_button", text="", icon='TRIA_LEFT')
+        op.axis = 'Z'
+        op.direction = -1
         row.prop(props, "z_slider", text="", slider=True)
-        
-        # Scale Sliders
-        layout.separator()
-        box = layout.box()
-        box.label(text="Scale:", icon='EMPTY_ARROWS')
-        
-        # Proportional Scale checkbox
-        box.prop(props, "proportional_scale")
-        
-        # Scale X Slider
-        row = box.row()
-        row.label(text="X:")
-        row.prop(props, "scale_x_slider", text="", slider=True)
-        
-        # Scale Y Slider (greyed out if proportional)
-        row = box.row()
-        row.enabled = not props.proportional_scale
-        row.label(text="Y:")
-        row.prop(props, "scale_y_slider", text="", slider=True)
-        
-        # Scale Z Slider (greyed out if proportional)
-        row = box.row()
-        row.enabled = not props.proportional_scale
-        row.label(text="Z:")
-        row.prop(props, "scale_z_slider", text="", slider=True)
+        op = row.operator("bbsnap.move_button", text="", icon='TRIA_RIGHT')
+        op.axis = 'Z'
+        op.direction = 1
+        op = row.operator("bbsnap.instance_copy", text="I")
+        op.axis = 'Z'
 
 
 classes = (
     BBSnapProperties,
-    BBSNAP_OT_move_objects,
+    BBSNAP_OT_from_selected,
+    BBSNAP_OT_set_proportional_move,
+    BBSNAP_OT_instance_copy,
+    BBSNAP_OT_move_button,
     BBSNAP_PT_panel,
 )
 
@@ -530,7 +494,6 @@ def register():
 def unregister():
     global _reset_timer_handle
     
-    # Clean up any running timers
     if _reset_timer_handle is not None and bpy.app.timers.is_registered(check_for_reset):
         bpy.app.timers.unregister(check_for_reset)
     
