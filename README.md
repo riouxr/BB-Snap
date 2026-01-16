@@ -1,15 +1,19 @@
 # BB Snap
 
-A Blender addon for precise object transformation using snap-to-increment sliders.
+A Blender addon for precise object transformation using snap-to-increment sliders with advanced movement controls.
 
 ## Features
 
-- **Snap Distance Control**: Set a custom snap increment for all transformations
+- **Per-Axis Snap Control**: Set independent snap increments for X, Y, and Z axes
 - **Move Objects**: Translate objects along X, Y, and Z axes with snapped precision
-- **Scale Objects**: Scale objects with optional proportional scaling across all axes
+- **Arrow Buttons**: Quick move buttons (left/right arrows) for instant precise movement
+- **Instance Copy**: Create linked duplicates with automatic offset positioning
 - **Coordinate Spaces**: Switch between Global and Local coordinate systems
 - **Auto-Reset Sliders**: Sliders automatically reset to zero after 0.5 seconds of inactivity
-- **Proportional Scale**: Scale all three axes uniformly (enabled by default)
+- **Snap Modes**: 
+  - **Uniform**: All axes use the same snap increment (X value)
+  - **Per Axis**: Each axis has its own independent snap increment
+- **From Selected**: Automatically set snap increments from object's bounding box dimensions
 
 ## Installation
 
@@ -30,33 +34,43 @@ The BB Snap panel is located in the 3D Viewport's sidebar:
 
 ### Settings
 
-**Snap Distance**: Set the increment value for all transformations. Objects will move/scale in multiples of this value.
-
 **Coordinate Space**:
 - **Global**: Transform objects relative to world coordinates
 - **Local**: Transform objects relative to their local orientation
 
-### Move
+**Snap Mode**:
+- **Uniform**: All axes use the X axis snap increment (Y and Z fields are greyed out)
+- **Per Axis**: Each axis has its own independent snap increment value
 
-Use the X, Y, Z sliders to translate selected objects:
-- Drag the slider left or right to move objects
-- Movement snaps to your specified increment
-- Sliders automatically reset to zero after 0.5 seconds
+### Move Controls
 
-### Scale
+Each axis (X, Y, Z) has the following controls:
 
-Use the X, Y, Z sliders to scale selected objects:
-- **Proportional Scale** (default): All three axes scale together uniformly
-- Uncheck to scale each axis independently
-- Scaling snaps to your specified increment
-- Sliders automatically reset to zero after 0.5 seconds
+**Layout**: `[Label] [Snap Value] [◄] [Slider] [►] [I]`
+
+- **Snap Value Field**: Set the snap increment for this axis (greyed out in Uniform mode for Y/Z)
+- **Left Arrow (◄)**: Move objects negative direction by snap increment
+- **Slider**: Drag to move objects, snaps to increment, auto-resets after 0.5s
+- **Right Arrow (►)**: Move objects positive direction by snap increment  
+- **Instance (I)**: Create linked duplicate and offset by snap increment
+
+### From Selected Button
+
+Click "From Selected" to automatically set snap increments based on the active object's bounding box:
+- X snap = object width
+- Y snap = object depth
+- Z snap = object height
+- Automatically switches to "Per Axis" mode
 
 ## Tips
 
-- Select one or more objects before using the sliders
-- The snap increment applies to both move and scale operations
-- You can scrub back and forth on sliders for quick adjustments
+- Select one or more objects before using the controls
+- Use arrow buttons for precise single-increment movements
+- Use the slider for continuous movement with auto-reset
+- Use Instance (I) button to quickly create arrays of objects
+- "From Selected" is perfect for aligning objects to existing geometry
 - Local coordinate space is useful for moving objects along their own orientation
+- Uniform mode ensures consistent spacing across all axes
 
 ## Requirements
 
@@ -79,8 +93,12 @@ If you encounter any issues or have suggestions, please [open an issue](../../is
 
 ### Version 1.0.0
 - Initial release
-- Move and Scale sliders with snap-to-increment functionality
+- Per-axis snap increment control
+- Move sliders with snap-to-increment functionality
+- Left/right arrow buttons for quick precise movement
+- Instance copy button for creating linked duplicates
 - Global and Local coordinate space support
-- Proportional scaling option
+- Uniform and Per Axis snap modes
+- From Selected button for automatic snap sizing
 - Auto-reset sliders on inactivity
 - Integrated into Tool tab
