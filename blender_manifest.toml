@@ -1,4 +1,4 @@
-schema_version = "1.0.0"
+schema_version = "1.1.0"
 
 # Package ID in the format: author_name_package_name (must be valid Python identifier)
 id = "blender_bob_bb_snap"

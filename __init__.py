@@ -1,7 +1,7 @@
 bl_info = {
     "name": "BB Snap",
     "author": "Blender Bob, Claude.ai",
-    "version": (1, 0, 0),
+    "version": (1, 2, 0),
     "blender": (4, 2, 0),
     "location": "View3D > N-Panel > Tool",
     "description": "Snap objects to incremental distances using sliders",
@@ -289,10 +289,10 @@ class BBSNAP_OT_set_proportional_move(Operator):
         return {'FINISHED'}
 
 
-class BBSNAP_OT_instance_copy(Operator):
-    """Create instance copy and move it by the snap increment"""
-    bl_idname = "bbsnap.instance_copy"
-    bl_label = "Instance Copy"
+class BBSNAP_OT_move_button(Operator):
+    """Move selected objects by snap increment. Hold SHIFT to duplicate, hold ALT for linked duplicate"""
+    bl_idname = "bbsnap.move_button"
+    bl_label = "Move"
     bl_options = {'REGISTER', 'UNDO'}
     
     axis: EnumProperty(
@@ -302,6 +302,15 @@ class BBSNAP_OT_instance_copy(Operator):
             ('Z', "Z", "Z axis"),
         ]
     )
+    
+    direction: bpy.props.IntProperty(default=1)
+    shift: BoolProperty(default=False, options={'SKIP_SAVE'})
+    alt: BoolProperty(default=False, options={'SKIP_SAVE'})
+    
+    def invoke(self, context, event):
+        self.shift = event.shift
+        self.alt = event.alt
+        return self.execute(context)
     
     def execute(self, context):
         props = context.scene.bbsnap_props
@@ -318,75 +327,94 @@ class BBSNAP_OT_instance_copy(Operator):
         elif self.axis == 'Z':
             snap_dist = props.move_snap_z
         
-        new_instances = []
-        
-        for obj in selected_objects:
-            new_obj = obj.copy()
-            new_obj.data = obj.data
-            context.collection.objects.link(new_obj)
-            
-            if props.coordinate_space == 'GLOBAL':
-                if self.axis == 'X':
-                    new_obj.location.x += snap_dist
-                elif self.axis == 'Y':
-                    new_obj.location.y += snap_dist
-                elif self.axis == 'Z':
-                    new_obj.location.z += snap_dist
-            else:  # LOCAL
-                if self.axis == 'X':
-                    local_vector = mathutils.Vector((snap_dist, 0, 0))
-                elif self.axis == 'Y':
-                    local_vector = mathutils.Vector((0, snap_dist, 0))
-                elif self.axis == 'Z':
-                    local_vector = mathutils.Vector((0, 0, snap_dist))
-                
-                global_vector = obj.matrix_world.to_3x3() @ local_vector
-                new_obj.location = obj.location + global_vector
-            
-            new_instances.append(new_obj)
-        
-        for obj in selected_objects:
-            obj.select_set(False)
-        
-        for obj in new_instances:
-            obj.select_set(True)
-        
-        if new_instances:
-            context.view_layer.objects.active = new_instances[-1]
-        
-        self.report({'INFO'}, f"Created {len(new_instances)} instance(s)")
-        
-        return {'FINISHED'}
-
-
-class BBSNAP_OT_move_button(Operator):
-    """Move selected objects by snap increment"""
-    bl_idname = "bbsnap.move_button"
-    bl_label = "Move"
-    bl_options = {'REGISTER', 'UNDO'}
-    
-    axis: EnumProperty(
-        items=[
-            ('X', "X", "X axis"),
-            ('Y', "Y", "Y axis"),
-            ('Z', "Z", "Z axis"),
-        ]
-    )
-    
-    direction: bpy.props.IntProperty(default=1)
-    
-    def execute(self, context):
-        props = context.scene.bbsnap_props
-        
-        if self.axis == 'X':
-            snap_dist = props.move_snap_x
-        elif self.axis == 'Y':
-            snap_dist = props.move_snap_y
-        elif self.axis == 'Z':
-            snap_dist = props.move_snap_z
-        
         movement = snap_dist * self.direction
-        move_selected_objects(context, self.axis, movement, props.coordinate_space)
+        
+        # ALT key pressed: create linked duplicate (instance)
+        if self.alt:
+            new_objects = []
+            
+            for obj in selected_objects:
+                new_obj = obj.copy()
+                new_obj.data = obj.data  # Share the same data (linked duplicate)
+                context.collection.objects.link(new_obj)
+                
+                if props.coordinate_space == 'GLOBAL':
+                    if self.axis == 'X':
+                        new_obj.location.x = obj.location.x + movement
+                    elif self.axis == 'Y':
+                        new_obj.location.y = obj.location.y + movement
+                    elif self.axis == 'Z':
+                        new_obj.location.z = obj.location.z + movement
+                else:  # LOCAL
+                    if self.axis == 'X':
+                        local_vector = mathutils.Vector((movement, 0, 0))
+                    elif self.axis == 'Y':
+                        local_vector = mathutils.Vector((0, movement, 0))
+                    elif self.axis == 'Z':
+                        local_vector = mathutils.Vector((0, 0, movement))
+                    
+                    global_vector = obj.matrix_world.to_3x3() @ local_vector
+                    new_obj.location = obj.location + global_vector
+                
+                new_objects.append(new_obj)
+            
+            # Deselect original objects and select new ones
+            for obj in selected_objects:
+                obj.select_set(False)
+            
+            for obj in new_objects:
+                obj.select_set(True)
+            
+            if new_objects:
+                context.view_layer.objects.active = new_objects[-1]
+            
+            self.report({'INFO'}, f"Created {len(new_objects)} linked duplicate(s)")
+        
+        # SHIFT key pressed: create standard duplicate
+        elif self.shift:
+            new_objects = []
+            
+            for obj in selected_objects:
+                new_obj = obj.copy()
+                if obj.data:
+                    new_obj.data = obj.data.copy()  # Copy the data (standard duplicate)
+                context.collection.objects.link(new_obj)
+                
+                if props.coordinate_space == 'GLOBAL':
+                    if self.axis == 'X':
+                        new_obj.location.x = obj.location.x + movement
+                    elif self.axis == 'Y':
+                        new_obj.location.y = obj.location.y + movement
+                    elif self.axis == 'Z':
+                        new_obj.location.z = obj.location.z + movement
+                else:  # LOCAL
+                    if self.axis == 'X':
+                        local_vector = mathutils.Vector((movement, 0, 0))
+                    elif self.axis == 'Y':
+                        local_vector = mathutils.Vector((0, movement, 0))
+                    elif self.axis == 'Z':
+                        local_vector = mathutils.Vector((0, 0, movement))
+                    
+                    global_vector = obj.matrix_world.to_3x3() @ local_vector
+                    new_obj.location = obj.location + global_vector
+                
+                new_objects.append(new_obj)
+            
+            # Deselect original objects and select new ones
+            for obj in selected_objects:
+                obj.select_set(False)
+            
+            for obj in new_objects:
+                obj.select_set(True)
+            
+            if new_objects:
+                context.view_layer.objects.active = new_objects[-1]
+            
+            self.report({'INFO'}, f"Created {len(new_objects)} duplicate(s)")
+        
+        # No modifier key: just move
+        else:
+            move_selected_objects(context, self.axis, movement, props.coordinate_space)
         
         return {'FINISHED'}
 
@@ -424,6 +452,15 @@ class BBSNAP_PT_panel(Panel):
         
         box.operator("bbsnap.from_selected", icon='SNAP_VOLUME')
         
+        # Modifier key hints
+        box.separator()
+        hint_box = box.box()
+        hint_box.label(text="Arrow Button Modifiers:", icon='INFO')
+        hint_box.label(text="  Shift + Click: Duplicate & Move")
+        hint_box.label(text="  Alt + Click: Linked Duplicate & Move")
+        
+        box.separator()
+        
         # X Slider
         row = box.row(align=True)
         row.label(text="X:")
@@ -436,8 +473,6 @@ class BBSNAP_PT_panel(Panel):
         op = row.operator("bbsnap.move_button", text="", icon='TRIA_RIGHT')
         op.axis = 'X'
         op.direction = 1
-        op = row.operator("bbsnap.instance_copy", text="I")
-        op.axis = 'X'
         
         # Y Slider
         row = box.row(align=True)
@@ -453,8 +488,6 @@ class BBSNAP_PT_panel(Panel):
         op = row.operator("bbsnap.move_button", text="", icon='TRIA_RIGHT')
         op.axis = 'Y'
         op.direction = 1
-        op = row.operator("bbsnap.instance_copy", text="I")
-        op.axis = 'Y'
         
         # Z Slider
         row = box.row(align=True)
@@ -470,15 +503,12 @@ class BBSNAP_PT_panel(Panel):
         op = row.operator("bbsnap.move_button", text="", icon='TRIA_RIGHT')
         op.axis = 'Z'
         op.direction = 1
-        op = row.operator("bbsnap.instance_copy", text="I")
-        op.axis = 'Z'
 
 
 classes = (
     BBSnapProperties,
     BBSNAP_OT_from_selected,
     BBSNAP_OT_set_proportional_move,
-    BBSNAP_OT_instance_copy,
     BBSNAP_OT_move_button,
     BBSNAP_PT_panel,
 )

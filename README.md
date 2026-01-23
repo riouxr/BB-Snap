@@ -46,13 +46,16 @@ The BB Snap panel is located in the 3D Viewport's sidebar:
 
 Each axis (X, Y, Z) has the following controls:
 
-**Layout**: `[Label] [Snap Value] [◄] [Slider] [►] [I]`
+**Layout**: `[Label] [Snap Value] [◄] [Slider] [►]`
 
 - **Snap Value Field**: Set the snap increment for this axis (greyed out in Uniform mode for Y/Z)
 - **Left Arrow (◄)**: Move objects negative direction by snap increment
+  - **Shift + Click**: Create duplicate and move it
+  - **Alt + Click**: Create linked duplicate (instance) and move it
 - **Slider**: Drag to move objects, snaps to increment, auto-resets after 0.5s
-- **Right Arrow (►)**: Move objects positive direction by snap increment  
-- **Instance (I)**: Create linked duplicate and offset by snap increment
+- **Right Arrow (►)**: Move objects positive direction by snap increment
+  - **Shift + Click**: Create duplicate and move it
+  - **Alt + Click**: Create linked duplicate (instance) and move it
 
 ### From Selected Button
 
@@ -66,11 +69,13 @@ Click "From Selected" to automatically set snap increments based on the active o
 
 - Select one or more objects before using the controls
 - Use arrow buttons for precise single-increment movements
+- Hold **Shift** while clicking arrow buttons to create standard duplicates
+- Hold **Alt** while clicking arrow buttons to create linked duplicates (instances)
 - Use the slider for continuous movement with auto-reset
-- Use Instance (I) button to quickly create arrays of objects
 - "From Selected" is perfect for aligning objects to existing geometry
 - Local coordinate space is useful for moving objects along their own orientation
 - Uniform mode ensures consistent spacing across all axes
+- Combine modifier keys with arrow buttons to quickly create arrays of objects
 
 ## Requirements
 
@@ -90,6 +95,11 @@ This addon is licensed under the GNU General Public License v3.0 or later.
 If you encounter any issues or have suggestions, please [open an issue](../../issues) on GitHub.
 
 ## Changelog
+
+### Version 1.2.0
+- Added in-UI description for modifier keys (Shift and Alt)
+- Updated documentation to clearly explain duplicate functionality
+- Improved user experience with informative help text in the panel
 
 ### Version 1.0.0
 - Initial release
